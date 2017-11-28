@@ -4,3 +4,4 @@ In this repository I will be posting examples using D3. D3.js is a JavaScript li
 
 ### Examples:
 * [New Mexico: Change in population](http://bl.ocks.org/ditdili/0c8d1a397901cffe26553ee9dde76b7a)
+* [New Mexico: Unemployment data](http://bl.ocks.org/ditdili/448b4210c76018b38674587d76a94f05)
