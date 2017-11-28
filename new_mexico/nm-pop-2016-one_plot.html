@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+<style>
+#header {
+  height:20px;
+  width:500px;
+  font-family:sans-serif;
+  font-weight: bold;
+  font-size: 0.8em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#area1 {
+    display: inline-block;
+}
+#info {
+  position: relative;
+  left: 300px;
+  top: 10px;
+  width: 200px;
+}
+#bottomA {
+    position:fixed;
+}
+maxT {
+  font-family:sans-serif;
+  font-weight: bold;
+  font-size: 0.6em;
+}
+path {
+  stroke: white;
+  stroke-opacity: 0.7;
+  stroke-width: 0.7;
+}
+path:hover {
+	fill-opacity: .7;
+}
+</style>
+
+<body>
+<div id="header"><hdr>New Mexico Population, Est. 2016.</hdr></div>
+<div id="cont">
+	<div id="area1">
+	</div>
+  <div id="bottomA"></div>
+</div>
+<div id="info"><maxT id="label"></maxT></div>
+
+<script src="http://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="http://d3js.org/topojson.v2.min.js"></script>
+<script>
+var width = 500, height = 500;
+
+var nmPopul = d3.map();
+
+var svg = d3.select("#bottomA").append("svg")
+    .attr("width", width)
+    .attr("height", 64);
+
+var svg1 = d3.select("#area1").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var projection = d3.geoAlbersUsa()
+    .scale(width * 9)
+    .translate([width * 1.72, -width/10]);
+
+var path = d3.geoPath()
+    .projection(projection);
+
+var fCom = d3.format(",");
+
+// Using Mike Bostock's Choropleth example to fill colors and recreate the
+// threshold scale: https://bl.ocks.org/mbostock/4060606
+var color = d3.scaleThreshold()
+    .domain([1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000])
+    .range(d3.schemeGreens[9]);
+
+var x = d3.scaleLog()
+    .domain([800, 500000])
+    .rangeRound([width/10, width - width/10]);
+
+var g = svg.append("g")
+    .attr("class", "key")
+    .attr("transform", "translate(0, 30)");
+
+g.selectAll("rect")
+  .data(color.range().map(function(d) {
+      d = color.invertExtent(d);
+      if (d[0] == null) d[0] = x.domain()[0];
+      if (d[1] == null) d[1] = x.domain()[1];
+      return d;
+    }))
+  .enter().append("rect")
+    .attr("height", 8)
+    .attr("x", function(d) { return x(d[0]); })
+    .attr("width", function(d) { return x(d[1]) - x(d[0]); })
+    .attr("fill", function(d) { return color(d[0]); });
+
+g.append("text")
+  .attr("class", "caption")
+  .attr("x", x.range()[0])
+  .attr("y", -6)
+  .attr("fill", "#000")
+  .attr("text-anchor", "start")
+  .attr("font-weight", "bold")
+  .text("Population");
+
+g.call(d3.axisBottom(x)
+  .tickSize(13)
+  .tickFormat(function(x, i) { return i ? x : x; })
+  .tickValues(color.domain()))
+  .select(".domain")
+  .remove();
+
+d3.queue()
+    .defer(d3.json, "nmNMod.json")
+    .defer(d3.csv, "NM-Popul-C.csv", function(d){
+        nmPopul.set(d.id, +d.popEst2016);
+    })
+    .await(plotting);
+
+function plotting(error, data){
+  if(error) throw error;
+
+	svg1.selectAll('path')
+    .data(topojson.feature(data, data.objects.cb_2015_new_mexico_county_20m).features)
+    .enter()
+    .append('path')
+    .attr('d', path)
+    .attr("fill", function(d) { return color(d.nmPopul = nmPopul.get(d.properties.GEOID)) })
+    .on('mouseover', function(d){
+      var label = "County: " + d.properties.NAME + ", pop.: " + fCom(d.nmPopul);
+      return document.getElementById("label").innerHTML=label;
+    })
+    .on('mouseout', function(d){
+      var label = "";
+      return document.getElementById("label").innerHTML=label;
+    })
+    .append("title")
+      .text(function(d) { return d.properties.NAME + ", pop.: " + fCom(d.nmPopul); });
+}
+</script>
+</body>
+</html>
