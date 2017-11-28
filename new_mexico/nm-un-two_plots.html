@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+<style>
+#header {
+  height:20px;
+  width:600px;
+  font-family:sans-serif;
+  font-weight: bold;
+  font-size: 0.8em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#area1 {
+    display: inline-block;
+}
+#area2 {
+    display: inline-block;
+}
+#info {
+  position: relative;
+  left: 50px;
+  top: 10px;
+  width: 200px;
+}
+#bottomA {
+    position:fixed;
+}
+maxT {
+  font-family:sans-serif;
+  font-weight: bold;
+  font-size: 0.6em;
+}
+path {
+  stroke: red;
+  stroke-opacity: 0.7;
+  stroke-width: 0.5;
+}
+path:hover {
+	fill-opacity: .7;
+}
+</style>
+
+<body>
+<div id="header"><hdr>New Mexico Unemployment data for Jan, and May 2017</hdr></div>
+<div id="cont">
+	<div id="area1">
+	</div>
+	<div id="area2">
+	</div>
+  <div id="bottomA"></div>
+</div>
+<div id="info"><maxT id="label"></maxT></div>
+
+<script src="http://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="http://d3js.org/topojson.v2.min.js"></script>
+<script>
+var width = 300, height = 300;
+
+var unempJan = d3.map();
+var unempMay = d3.map();
+
+var svg = d3.select("#bottomA").append("svg")
+    .attr("width", width * 2)
+    .attr("height", 64);
+
+var svg1 = d3.select("#area1").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var svg2 = d3.select("#area2").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var projection = d3.geoAlbersUsa()
+    .scale(width * 9)
+    .translate([width * 1.72, -width/10]);
+
+var path = d3.geoPath()
+    .projection(projection);
+
+var fDecCom = d3.format(",.2f");
+
+// Using Mike Bostock's Choropleth example to fill colors and recreate the
+// threshold scale: https://bl.ocks.org/mbostock/4060606
+var color = d3.scaleThreshold()
+    .domain([1, 4, 6, 8, 10, 12, 14, 16, 20])
+    .range(d3.schemeOrRd[9]);
+
+var x = d3.scaleLinear()
+    .domain([1, 16])
+    .rangeRound([360,520]);
+
+var g = svg.append("g")
+    .attr("class", "key")
+    .attr("transform", "translate(0, 30)");
+
+g.selectAll("rect")
+  .data(color.range().map(function(d) {
+      d = color.invertExtent(d);
+      if (d[0] == null) d[0] = x.domain()[0];
+      if (d[1] == null) d[1] = x.domain()[1];
+      return d;
+    }))
+  .enter().append("rect")
+    .attr("height", 8)
+    .attr("x", function(d) { return x(d[0]); })
+    .attr("width", function(d) { return x(d[1]) - x(d[0]); })
+    .attr("fill", function(d) { return color(d[0]); });
+
+g.append("text")
+  .attr("class", "caption")
+  .attr("x", x.range()[0])
+  .attr("y", -6)
+  .attr("fill", "#000")
+  .attr("text-anchor", "start")
+  .attr("font-weight", "bold")
+  .text("Unemployment rate");
+
+g.call(d3.axisBottom(x)
+  .tickSize(13)
+  .tickFormat(function(x, i) { return i ? x : x + "%"; })
+  .tickValues(color.domain()))
+  .select(".domain")
+  .remove();
+
+d3.queue()
+    .defer(d3.json, "nmNMod.json")
+    .defer(d3.csv, "unTwo.csv", function(d){
+        unempJan.set(d.id, +d.unempJan);
+				unempMay.set(d.id, +d.unempMay);
+    })
+    .await(plotting);
+
+function plotting(error, data){
+  if(error) throw error;
+
+	svg1.selectAll('path')
+		.data(topojson.feature(data, data.objects.cb_2015_new_mexico_county_20m).features)
+		.enter()
+		.append('path')
+		.attr('d', path)
+    .attr("fill", function(d) { return color(d.unempJan = unempJan.get(d.properties.GEOID)) })
+		.on('mouseover', function(d){
+			var label = "County: " + d.properties.NAME + ", " + fDecCom(d.unempJan) + "%";
+			return document.getElementById("label").innerHTML=label;
+		})
+    .on('mouseout', function(d){
+			var label = "";
+			return document.getElementById("label").innerHTML=label;
+		})
+    .append("title")
+      .text(function(d) { return d.properties.NAME + ", " + fDecCom(d.unempJan) + "%" ; });
+
+  svg2.selectAll('path')
+		.data(topojson.feature(data, data.objects.cb_2015_new_mexico_county_20m).features)
+		.enter()
+		.append('path')
+		.attr('d', path)
+    .attr("fill", function(d) { return color(d.unempMay = unempMay.get(d.properties.GEOID)) })
+		.on('mouseover', function(d){
+			var label = "County: " + d.properties.NAME + ", " + fDecCom(d.unempMay) + "%";
+			return document.getElementById("label").innerHTML=label;
+		})
+    .on('mouseout', function(d){
+			var label = "";
+			return document.getElementById("label").innerHTML=label;
+		})
+    .append("title")
+      .text(function(d) { return d.properties.NAME + ", " + fDecCom(d.unempMay) + "%" ; });
+
+  svg1.on("mouseover",function(){ d3.select("text").text("Unemployment rate - Jan 2017"); });
+  svg1.on("mouseout",function(){ d3.select("text").text("Unemployment rate"); });
+  svg2.on("mouseover",function(){ d3.select("text").text("Unemployment rate - May 2017"); });
+  svg2.on("mouseout",function(){ d3.select("text").text("Unemployment rate"); });
+
+}
+</script>
+</body>
+</html>
