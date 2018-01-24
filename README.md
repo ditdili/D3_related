@@ -11,4 +11,4 @@ In this repository I will be posting examples using D3. D3.js is a JavaScript li
 #### Bar charts:
 * [Simple bar chart]
 * [Bar chart with tooltip]
-* [Overlaying two Bar Charts, with tooltip]
+* [Overlaying two Bar Charts, with tooltip](https://bl.ocks.org/ditdili/29e044c7012b22edc09aacd3b261ac1f)
